@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "local-rag-kb": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["d:/your/path/to/claude_rag/server.py"],
+      "env": {
+        "PYTHONPATH": "d:/your/path/to/claude_rag",
+        "PYTHONIOENCODING": "utf-8",
+        "SENTENCE_TRANSFORMERS_HOME": "d:/your/path/to/claude_rag/models_cache",
+        "HF_HOME": "d:/your/path/to/claude_rag/models_cache",
+        "HF_HUB_DISABLE_SYMLINKS_WARNING": "1"
+      }
+    }
+  }
+}

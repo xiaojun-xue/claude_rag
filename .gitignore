@@ -1,0 +1,47 @@
+# ── Knowledge base data (private, not for version control) ────────────────
+knowledge_base/
+vector_store/
+vector_store_backup/
+models_cache/
+
+# ── Local machine config (paths and IPs are machine-specific) ─────────────
+.claude/
+.mcp.json
+.mcp.remote.json
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# ── Virtual environment ────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Test / coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.xml
+
+# ── Logs & temp ────────────────────────────────────────────────────────────
+*.log
+/tmp/
+
+# ── OS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo

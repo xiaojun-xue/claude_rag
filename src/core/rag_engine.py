@@ -26,6 +26,7 @@ from .config import (
     CODE_FILE_TYPES,
     COLLECTION_NAME,
     DEFAULT_TOP_K,
+    EMBEDDING_DEVICE,
     EMBEDDING_MODEL_NAME,
     KNOWLEDGE_BASE_DIR,
     MAX_TOP_K,
@@ -109,23 +110,47 @@ class RAGEngine:
             if self._text_collection is None or self._code_collection is None:
                 self._open_collections()
 
+    @staticmethod
+    def _resolve_device() -> str:
+        """Resolve EMBEDDING_DEVICE config to an actual torch device string."""
+        import torch
+        cfg = EMBEDDING_DEVICE.strip()
+        if cfg == "auto":
+            return "cuda" if torch.cuda.is_available() else "cpu"
+        if cfg == "cuda" and torch.cuda.is_available():
+            return "cuda"
+        if cfg.startswith("cuda:") and torch.cuda.is_available():
+            # Validate device index
+            idx = int(cfg.split(":")[1])
+            if idx < torch.cuda.device_count():
+                return cfg
+            logger.warning("CUDA device %s not available (%d device(s)), falling back to cpu",
+                           cfg, torch.cuda.device_count())
+            return "cpu"
+        if cfg == "cpu":
+            return "cpu"
+        logger.warning("Invalid EMBEDDING_DEVICE=%r, falling back to cpu", cfg)
+        return "cpu"
+
     def _load_text_model(self) -> None:
         import os
         os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(MODELS_CACHE_DIR)
         os.environ["HF_HOME"] = str(MODELS_CACHE_DIR)
         from sentence_transformers import SentenceTransformer
-        logger.info("Loading text model: %s", self._text_model_name)
-        self._text_model = SentenceTransformer(self._text_model_name)
-        logger.info("Text model loaded.")
+        device = self._resolve_device()
+        logger.info("Loading text model: %s on %s", self._text_model_name, device)
+        self._text_model = SentenceTransformer(self._text_model_name, device=device, local_files_only=True)
+        logger.info("Text model loaded on %s.", device)
 
     def _load_code_model(self) -> None:
         import os
         os.environ["SENTENCE_TRANSFORMERS_HOME"] = str(MODELS_CACHE_DIR)
         os.environ["HF_HOME"] = str(MODELS_CACHE_DIR)
         from sentence_transformers import SentenceTransformer
-        logger.info("Loading code model: %s", self._code_model_name)
-        self._code_model = SentenceTransformer(self._code_model_name, trust_remote_code=True)
-        logger.info("Code model loaded.")
+        device = self._resolve_device()
+        logger.info("Loading code model: %s on %s", self._code_model_name, device)
+        self._code_model = SentenceTransformer(self._code_model_name, trust_remote_code=True, device=device, local_files_only=True)
+        logger.info("Code model loaded on %s.", device)
 
     def _open_collections(self) -> None:
         import chromadb

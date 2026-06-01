@@ -145,3 +145,6 @@ RERANK_FINAL_K = _get_int ("RERANK_FINAL_K", "reranking", "final_k", 5)
 # ── HuggingFace cache (set early so imports pick it up) ───────────────────
 os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", str(MODELS_CACHE_DIR))
 os.environ.setdefault("HF_HOME", str(MODELS_CACHE_DIR))
+# Default to offline mode — model validation/download must not block startup.
+# Set HF_HUB_OFFLINE=0 in the environment to allow network access for first-time download.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")

@@ -161,18 +161,18 @@ class LLMSynthesizer:
             yield _sse("error", message="SYNTHESIS_BACKEND is not configured.")
             return
 
-        self._ensure_client()
-        model = self._resolve_model()
-        context = _build_context(docs)
-        user_content = f"问题：{query}\n\n上下文：\n{context}"
-
-        # Build message list: prior turns + current query
-        messages = _build_messages(history, user_content)
-
-        logger.info("LLM synthesis — backend=%s model=%s docs=%d history=%d",
-                    self._backend, model, len(docs), len(messages) - 1)
-
         try:
+            self._ensure_client()
+            model = self._resolve_model()
+            context = _build_context(docs)
+            user_content = f"问题：{query}\n\n上下文：\n{context}"
+
+            # Build message list: prior turns + current query
+            messages = _build_messages(history, user_content)
+
+            logger.info("LLM synthesis — backend=%s model=%s docs=%d history=%d",
+                        self._backend, model, len(docs), len(messages) - 1)
+
             if self._backend == "claude":
                 async with self._client.messages.stream(
                     model=model,

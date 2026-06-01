@@ -4,11 +4,18 @@ vector_store/
 vector_store_backup/
 models_cache/
 
+# ── Local model files (large binaries, machine-specific) ───────────────────
+models/
+Modelfile
+
 # ── Local machine config (paths and IPs are machine-specific) ─────────────
 .claude/
 .mcp.json
 .mcp.remote.json
 claude_rag.toml
+
+# ── Temp: not fully tested, contains absolute paths ───────────────────────
+start_server.bat
 
 # ── Python ─────────────────────────────────────────────────────────────────
 __pycache__/
@@ -35,6 +42,7 @@ htmlcov/
 
 # ── Logs & temp ────────────────────────────────────────────────────────────
 *.log
+*.bak
 /tmp/
 
 # ── OS ─────────────────────────────────────────────────────────────────────

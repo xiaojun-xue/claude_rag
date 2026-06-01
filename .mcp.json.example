@@ -3,7 +3,7 @@
     "local-rag-kb": {
       "type": "stdio",
       "command": "python",
-      "args": ["d:/your/path/to/claude_rag/server/stdio.py"],
+      "args": ["d:/your/path/to/claude_rag/src/server/stdio.py"],
       "env": {
         "PYTHONIOENCODING": "utf-8",
         "HF_HUB_DISABLE_SYMLINKS_WARNING": "1"

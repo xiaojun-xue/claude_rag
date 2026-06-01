@@ -37,6 +37,16 @@ base_url = ""
 max_tokens = 1024
 
 
+# ── Embedding ───────────────────────────────────────────────────────────────
+[embedding]
+
+# Device for embedding models. Options:
+#   auto    → CUDA if available, otherwise CPU (default)
+#   cpu     → force CPU
+#   cuda    → force GPU (first available)
+#   cuda:0  → specific GPU device index
+device = "auto"
+
 # ── Reranking ──────────────────────────────────────────────────────────────
 [reranking]
 

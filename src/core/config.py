@@ -60,6 +60,10 @@ EMBEDDING_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
 # Code model: trained on CodeSearchNet, 768-dim, ~330MB, works with transformers 5.x
 CODE_EMBEDDING_MODEL_NAME = "flax-sentence-embeddings/st-codesearch-distilroberta-base"
 
+# Device: "auto" (default) | "cpu" | "cuda" | "cuda:0" | …
+# No env-var override — only server admin can change via claude_rag.toml.
+EMBEDDING_DEVICE = str(_TOML.get("embedding", {}).get("device", "auto"))
+
 # ── ChromaDB collections ───────────────────────────────────────────────────
 COLLECTION_NAME = "knowledge_base"   # legacy (kept for reference)
 TEXT_COLLECTION_NAME = "kb_text"     # PDF/DOCX/TXT/MD/INI/YAML/JSON
@@ -129,9 +133,10 @@ SERVER_PORT = _get_int("SERVER_PORT", "server", "port", 8765)
 
 # ── LLM Synthesis ──────────────────────────────────────────────────────────
 # SYNTHESIS_BACKEND: deepseek | qianwen | ollama | claude | openai | custom
-SYNTHESIS_BACKEND = _get    ("SYNTHESIS_BACKEND", "llm", "backend",    "")
-LLM_API_KEY       = _get    ("LLM_API_KEY",       "llm", "api_key",    "")
-LLM_BASE_URL      = _get    ("LLM_BASE_URL",       "llm", "base_url",   "")
+# No env-var override — only server admin can change via claude_rag.toml.
+SYNTHESIS_BACKEND = str(_TOML.get("llm", {}).get("backend", ""))
+LLM_API_KEY       = str(_TOML.get("llm", {}).get("api_key", ""))
+LLM_BASE_URL      = str(_TOML.get("llm", {}).get("base_url", ""))
 LLM_MODEL         = _get    ("LLM_MODEL",          "llm", "model",      "")
 LLM_MAX_TOKENS    = _get_int("LLM_MAX_TOKENS",     "llm", "max_tokens", 1024)
 

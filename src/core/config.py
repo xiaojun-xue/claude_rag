@@ -135,7 +135,30 @@ SERVER_PORT = _get_int("SERVER_PORT", "server", "port", 8765)
 # 默认关闭，向后兼容。可通过 claude_rag.toml 的 [auth] 节或环境变量覆盖。
 # 启用后，受保护路径需携带 x-api-key 请求头（或 ?api_key= 查询参数）。
 AUTH_ENABLED = _get_bool("AUTH_ENABLED", "auth", "enabled", False)
-AUTH_API_KEY = _get     ("AUTH_API_KEY", "auth", "api_key", "")
+
+# 单密钥（旧字段，向后兼容）：等价于管理员密钥。也支持逗号分隔多把。
+AUTH_API_KEY = _get("AUTH_API_KEY", "auth", "api_key", "")
+
+
+def _split_keys(raw: str) -> list[str]:
+    """把逗号分隔的密钥串解析成去重后的非空列表（保序）。"""
+    out: list[str] = []
+    for part in (raw or "").split(","):
+        k = part.strip()
+        if k and k not in out:
+            out.append(k)
+    return out
+
+
+# 多密钥 / 分角色（每个角色都支持逗号分隔的多把 key，便于按人发放/单独吊销）：
+#   • 管理员（admin）——全部权限（所有 MCP 工具含写操作、/shutdown、Web UI）。
+#   • 只读（readonly）——Web UI / REST 只读端点 + 全部只读 MCP 工具
+#     （语义搜索 + 精确检索/读取，共 9 个）；仅写操作（ingest_document /
+#     ingest_directory / delete_document）与 /shutdown 被拒绝。
+# admin 列表 = AUTH_ADMIN_API_KEY 优先，为空时回退旧的 AUTH_API_KEY。
+AUTH_ADMIN_API_KEYS    = _split_keys(_get("AUTH_ADMIN_API_KEY", "auth", "admin_api_key", "")) \
+                         or _split_keys(AUTH_API_KEY)
+AUTH_READONLY_API_KEYS = _split_keys(_get("AUTH_READONLY_API_KEY", "auth", "readonly_api_key", ""))
 
 # ── LLM Synthesis ──────────────────────────────────────────────────────────
 # SYNTHESIS_BACKEND: deepseek | qianwen | ollama | claude | openai | custom

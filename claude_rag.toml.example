@@ -85,6 +85,20 @@ port = 8765
 # Stdio 模式（本地子进程）不经过 HTTP 层，不受影响。
 enabled = false
 
-# 共享密钥。建议用 `openssl rand -hex 32` 生成。
-# 也可用环境变量 AUTH_API_KEY 注入（env 优先于本文件），避免写进配置文件。
-api_key = ""
+# 分角色多密钥（建议各用 `openssl rand -hex 32` 生成）。每个角色都支持
+# 逗号分隔的多把 key（便于按人发放、单独吊销），例如：
+#   admin_api_key    = "key_for_alice,key_for_bob"
+#   readonly_api_key = "key_team_a, key_team_b, key_guest"
+#   • admin_api_key    —— 管理员，全部权限（所有 MCP 工具、/shutdown、写操作）。
+#   • readonly_api_key —— 只读，Web UI / REST 只读端点 + 全部只读 MCP 工具：
+#                          语义搜索 search_knowledge_base / search_code / search_docs，
+#                          精确检索 search_symbol / grep_code / get_file /
+#                          get_chunk_context / list_documents / list_code_files；
+#                          仅写操作（ingest_document / ingest_directory /
+#                          delete_document）与 /shutdown 被拒绝。
+# 也可用环境变量注入（env 优先于本文件）：AUTH_ADMIN_API_KEY / AUTH_READONLY_API_KEY。
+admin_api_key = ""
+readonly_api_key = ""
+
+# 旧的单密钥字段（向后兼容）：若设置且未设 admin_api_key，则等价于管理员密钥。
+# api_key = ""

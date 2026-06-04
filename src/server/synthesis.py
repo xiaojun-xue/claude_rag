@@ -58,7 +58,7 @@ RAG_SYSTEM_PROMPT = (
     "你是专业的技术知识库助手。基于提供的上下文回答问题。\n"
     "规则：\n"
     "1. 只使用上下文中的信息，不编造\n"
-    "2. 引用来源时使用 [文件名] 格式\n"
+    "2. 引用来源时使用 [文件名] 格式（禁止使用数字编号，如 [1]、[2]）\n"
     "3. 代码片段保留原始格式\n"
     "4. 信息不足时明确说明"
 )
@@ -72,10 +72,10 @@ def _sse(type: str, **kwargs) -> str:  # noqa: A002
 
 def _build_context(docs: list[dict]) -> str:
     parts = []
-    for i, d in enumerate(docs, 1):
+    for d in docs:
         name = d.get("doc_name", "unknown")
         content = d.get("content", "").strip()
-        parts.append(f"[{i}] {name}:\n{content}")
+        parts.append(f"{content}\n\n[{name}]")
     return "\n\n".join(parts)
 
 

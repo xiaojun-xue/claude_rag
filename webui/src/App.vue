@@ -1,6 +1,6 @@
 <template>
   <div class="layout">
-    <Sidebar />
+    <Sidebar ref="sidebarRef" />
     <div class="main">
       <ChatWindow />
       <InputBar />
@@ -42,9 +42,11 @@ import { useChatStore } from './stores/chat'
 const store = useChatStore()
 const keyDraft = ref(store.apiKey || '')
 const keyInput = ref(null)
+const sidebarRef = ref(null)
+const dismissed = ref(false)
 
 watch(() => store.authRequired, async (show) => {
-  if (show) {
+  if (show && !dismissed.value) {
     keyDraft.value = store.apiKey || ''
     await nextTick()
     keyInput.value?.focus()
@@ -54,11 +56,14 @@ watch(() => store.authRequired, async (show) => {
 function submit() {
   const k = keyDraft.value.trim()
   if (!k) return
-  store.setApiKey(k)        // 设置成功后 authRequired 自动置 false，用户可重试请求
+  store.setApiKey(k)
+  dismissed.value = false
+  sidebarRef.value?.verify()       // 通知侧边栏验证 key
 }
 
 function cancel() {
   store.authRequired = false
+  dismissed.value = true       // 不再自动弹窗，可去侧边栏手动设置
 }
 </script>
 

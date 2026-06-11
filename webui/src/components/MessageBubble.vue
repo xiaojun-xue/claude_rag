@@ -27,11 +27,6 @@
           参考来源
         </div>
 
-        <!-- LLM error (shown even when results exist) -->
-        <div v-if="!msg.llmAnswer && !msg.isStreaming && msg.content" class="error-msg">
-          ⚠ {{ msg.content }}
-        </div>
-
         <!-- Chunk results -->
         <SearchResult
           v-if="msg.results"
@@ -39,8 +34,8 @@
           @view-file="$emit('view-file', $event)"
         />
 
-        <!-- Pure text (no results, no answer) -->
-        <div v-else-if="!msg.llmAnswer && !msg.isStreaming && !msg.content" class="text">
+        <!-- Plain text (errors / pure search) -->
+        <div v-else-if="!msg.llmAnswer && !msg.isStreaming && msg.content" class="text">
           {{ msg.content }}
         </div>
 
@@ -149,17 +144,6 @@ function handleClick(e) {
 }
 
 .text { white-space: pre-wrap; word-break: break-word; }
-
-.error-msg {
-  font-size: 13px;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  word-break: break-word;
-}
 
 /* ── LLM answer header ─── */
 .llm-label {

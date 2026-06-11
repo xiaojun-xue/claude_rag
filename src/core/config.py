@@ -60,6 +60,10 @@ EMBEDDING_MODEL_NAME = "BAAI/bge-base-zh-v1.5"
 # Code model: trained on CodeSearchNet, 768-dim, ~330MB, works with transformers 5.x
 CODE_EMBEDDING_MODEL_NAME = "flax-sentence-embeddings/st-codesearch-distilroberta-base"
 
+# Device: "auto" (default) | "cpu" | "cuda" | "cuda:0" | …
+# No env-var override — only server admin can change via claude_rag.toml.
+EMBEDDING_DEVICE = str(_TOML.get("embedding", {}).get("device", "auto"))
+
 # ── ChromaDB collections ───────────────────────────────────────────────────
 COLLECTION_NAME = "knowledge_base"   # legacy (kept for reference)
 TEXT_COLLECTION_NAME = "kb_text"     # PDF/DOCX/TXT/MD/INI/YAML/JSON
@@ -127,11 +131,41 @@ SERVER_VERSION = "2.0.0"
 SERVER_HOST = _get    ("SERVER_HOST", "server", "host", "0.0.0.0")
 SERVER_PORT = _get_int("SERVER_PORT", "server", "port", 8765)
 
+# ── Auth (SSE / REST API 鉴权) ─────────────────────────────────────────────
+# 默认关闭，向后兼容。可通过 claude_rag.toml 的 [auth] 节或环境变量覆盖。
+# 启用后，受保护路径需携带 x-api-key 请求头（或 ?api_key= 查询参数）。
+AUTH_ENABLED = _get_bool("AUTH_ENABLED", "auth", "enabled", False)
+
+# 单密钥（旧字段，向后兼容）：等价于管理员密钥。也支持逗号分隔多把。
+AUTH_API_KEY = _get("AUTH_API_KEY", "auth", "api_key", "")
+
+
+def _split_keys(raw: str) -> list[str]:
+    """把逗号分隔的密钥串解析成去重后的非空列表（保序）。"""
+    out: list[str] = []
+    for part in (raw or "").split(","):
+        k = part.strip()
+        if k and k not in out:
+            out.append(k)
+    return out
+
+
+# 多密钥 / 分角色（每个角色都支持逗号分隔的多把 key，便于按人发放/单独吊销）：
+#   • 管理员（admin）——全部权限（所有 MCP 工具含写操作、/shutdown、Web UI）。
+#   • 只读（readonly）——Web UI / REST 只读端点 + 全部只读 MCP 工具
+#     （语义搜索 + 精确检索/读取，共 9 个）；仅写操作（ingest_document /
+#     ingest_directory / delete_document）与 /shutdown 被拒绝。
+# admin 列表 = AUTH_ADMIN_API_KEY 优先，为空时回退旧的 AUTH_API_KEY。
+AUTH_ADMIN_API_KEYS    = _split_keys(_get("AUTH_ADMIN_API_KEY", "auth", "admin_api_key", "")) \
+                         or _split_keys(AUTH_API_KEY)
+AUTH_READONLY_API_KEYS = _split_keys(_get("AUTH_READONLY_API_KEY", "auth", "readonly_api_key", ""))
+
 # ── LLM Synthesis ──────────────────────────────────────────────────────────
 # SYNTHESIS_BACKEND: deepseek | qianwen | ollama | claude | openai | custom
-SYNTHESIS_BACKEND = _get    ("SYNTHESIS_BACKEND", "llm", "backend",    "")
-LLM_API_KEY       = _get    ("LLM_API_KEY",       "llm", "api_key",    "")
-LLM_BASE_URL      = _get    ("LLM_BASE_URL",       "llm", "base_url",   "")
+# No env-var override — only server admin can change via claude_rag.toml.
+SYNTHESIS_BACKEND = str(_TOML.get("llm", {}).get("backend", ""))
+LLM_API_KEY       = str(_TOML.get("llm", {}).get("api_key", ""))
+LLM_BASE_URL      = str(_TOML.get("llm", {}).get("base_url", ""))
 LLM_MODEL         = _get    ("LLM_MODEL",          "llm", "model",      "")
 LLM_MAX_TOKENS    = _get_int("LLM_MAX_TOKENS",     "llm", "max_tokens", 1024)
 
@@ -145,3 +179,6 @@ RERANK_FINAL_K = _get_int ("RERANK_FINAL_K", "reranking", "final_k", 5)
 # ── HuggingFace cache (set early so imports pick it up) ───────────────────
 os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", str(MODELS_CACHE_DIR))
 os.environ.setdefault("HF_HOME", str(MODELS_CACHE_DIR))
+# Default to offline mode — model validation/download must not block startup.
+# Set HF_HUB_OFFLINE=0 in the environment to allow network access for first-time download.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")

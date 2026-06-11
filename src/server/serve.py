@@ -56,9 +56,20 @@ from starlette.staticfiles import StaticFiles
 
 from src.server.ui import UI_ROUTES
 
-from src.core.config import SERVER_NAME, SERVER_VERSION, SERVER_HOST, SERVER_PORT
+from contextvars import ContextVar
+
+from src.core.config import (
+    SERVER_NAME, SERVER_VERSION, SERVER_HOST, SERVER_PORT,
+    AUTH_ENABLED, AUTH_ADMIN_API_KEYS, AUTH_READONLY_API_KEYS,
+)
 from src.core.rag_engine import RAGEngine
 from src.server.tools import TOOLS, dispatch
+from src.server.auth import AuthMiddleware, ROLE_ADMIN, is_tool_allowed
+
+# 当前 SSE 会话的角色。stdio / 鉴权关闭时默认 admin（本地可信，无限制）。
+# 在 handle_sse 中按 /sse 连接所用的密钥绑定，server.run() 派生的工具调用任务
+# 通过 contextvar 继承到该值，从而实现按会话的工具级门禁。
+_current_role: ContextVar[str] = ContextVar("current_role", default=ROLE_ADMIN)
 
 # ── MCP Server ─────────────────────────────────────────────────────────────
 
@@ -98,7 +109,24 @@ async def list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    logger.info("Tool called: %s  args=%s", name, arguments)
+    role = _current_role.get()
+    logger.info("Tool called: %s  role=%s  args=%s", name, role, arguments)
+
+    # 工具级门禁：readonly 角色只能调用 list_documents / list_code_files
+    if not is_tool_allowed(role, name):
+        logger.warning("Tool '%s' denied for role '%s'", name, role)
+        result = {
+            "error": "forbidden",
+            "detail": f"tool '{name}' requires admin privileges",
+            "tool": name,
+        }
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps(result, ensure_ascii=False, indent=2),
+            )
+        ]
+
     try:
         result = await dispatch(name, arguments, get_engine())
     except Exception as exc:
@@ -122,15 +150,22 @@ def build_app() -> Starlette:
     sse_transport = SseServerTransport("/messages/")
 
     async def handle_sse(request: Request) -> Response:
-        logger.info("New SSE connection from %s", request.client)
-        async with sse_transport.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
-            await server.run(
-                streams[0],
-                streams[1],
-                server.create_initialization_options(),
-            )
+        # 鉴权关闭或 stdio 场景下 scope 无 auth_role → 默认 admin（无限制）
+        role = request.scope.get("auth_role", ROLE_ADMIN)
+        logger.info("New SSE connection from %s  role=%s", request.client, role)
+        # 把角色绑定到本会话；server.run() 派生的工具调用任务会继承该 contextvar
+        token = _current_role.set(role)
+        try:
+            async with sse_transport.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await server.run(
+                    streams[0],
+                    streams[1],
+                    server.create_initialization_options(),
+                )
+        finally:
+            _current_role.reset(token)
         return Response()
 
     async def handle_shutdown(request: Request) -> Response:
@@ -164,6 +199,29 @@ def build_app() -> Starlette:
         ] + extra_routes
     )
     app.state.engine = get_engine()
+
+    # ── API Key auth（多密钥 / 分角色）─────────────────────────────────────
+    # 默认关闭（向后兼容）；AUTH_ENABLED=true 时用纯 ASGI 中间件包裹整个 app。
+    # admin 全权；readonly 仅只读 REST + list_documents/list_code_files。
+    if AUTH_ENABLED:
+        if not AUTH_ADMIN_API_KEYS and not AUTH_READONLY_API_KEYS:
+            logger.warning(
+                "AUTH_ENABLED=true 但未配置任何密钥 —— 所有受保护路径将一律拒绝。"
+                "请在 claude_rag.toml [auth] 或环境变量设置 admin_api_key / readonly_api_key。"
+            )
+        app = AuthMiddleware(
+            app,
+            admin_keys=AUTH_ADMIN_API_KEYS,
+            readonly_keys=AUTH_READONLY_API_KEYS,
+        )
+        logger.info(
+            "API key auth ENABLED — admin keys=%d readonly keys=%d "
+            "(protected paths require 'x-api-key' header or '?api_key=')",
+            len(AUTH_ADMIN_API_KEYS), len(AUTH_READONLY_API_KEYS),
+        )
+    else:
+        logger.info("API key auth DISABLED (AUTH_ENABLED=false) — all endpoints open")
+
     return app
 
 

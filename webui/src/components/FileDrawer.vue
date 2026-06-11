@@ -27,6 +27,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useChatStore } from '../stores/chat'
 import hljs from 'highlight.js/lib/core'
 import c from 'highlight.js/lib/languages/c'
 import cpp from 'highlight.js/lib/languages/cpp'
@@ -53,6 +54,8 @@ hljs.registerLanguage('ini', ini)
 const props = defineProps({ docName: String })
 defineEmits(['close'])
 
+const store = useChatStore()
+
 const chunks = ref([])
 const loading = ref(false)
 const loadError = ref('')
@@ -73,7 +76,7 @@ watch(() => props.docName, async (name) => {
   loadError.value = ''
   chunks.value = []
   try {
-    const r = await fetch(`/api/file/${encodeURIComponent(name)}`)
+    const r = await store.fetchWithAuth(`/api/file/${encodeURIComponent(name)}`)
     const data = await r.json()
     if (data.error) loadError.value = data.error
     else chunks.value = data

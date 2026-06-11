@@ -25,6 +25,35 @@
       </template>
     </div>
 
+    <div class="settings">
+      <label class="settings-label" for="api-key">API Key</label>
+      <input
+        id="api-key"
+        type="password"
+        class="settings-input"
+        placeholder="admin 或 readonly key"
+        :value="store.apiKey"
+        @input="onApiKeyInput"
+        @change="onApiKeyChange"
+      />
+      <div v-if="authStatus" class="auth-status" :class="authStatus">
+        {{ authStatus === 'ok' ? '✓ Key 已保存' : '✗ 连接失败，检查 Key' }}
+      </div>
+    </div>
+
+    <div class="settings">
+      <label class="settings-label" for="max-tokens">回答 Token 上限</label>
+      <input
+        id="max-tokens"
+        type="number"
+        min="1"
+        class="settings-input"
+        placeholder="服务端默认"
+        :value="store.maxTokens || ''"
+        @change="onMaxTokens"
+      />
+    </div>
+
     <div class="stats" v-if="stats">
       <span>文档 {{ stats.kb_text }} chunks</span>
       <span>代码 {{ stats.kb_code }} chunks</span>
@@ -38,13 +67,51 @@ import { useChatStore } from '../stores/chat'
 
 const store = useChatStore()
 const stats = ref(null)
+const authStatus = ref(null)  // null | 'ok' | 'fail'
+let verifyTimer = null
 
-onMounted(async () => {
+async function checkAuth() {
+  if (!store.apiKey) {
+    authStatus.value = null
+    store.authRequired = true        // 没 key → 弹窗提示
+    return
+  }
   try {
-    const r = await fetch('/api/stats')
-    stats.value = await r.json()
-  } catch (_) {}
-})
+    const r = await store.fetchWithAuth('/api/stats')
+    if (r.ok) {
+      stats.value = await r.json()
+      authStatus.value = 'ok'
+    } else if (r.status === 401) {
+      authStatus.value = 'fail'
+      stats.value = null
+      store.authRequired = true       // key 无效 → 弹窗提示
+    } else {
+      authStatus.value = null
+    }
+  } catch (_) {
+    authStatus.value = null
+  }
+}
+
+function onApiKeyInput(e) {
+  store.setApiKey(e.target.value)       // 只保存，不验证
+}
+
+function onApiKeyChange(e) {
+  store.setApiKey(e.target.value)
+  checkAuth()                           // 失焦时验证
+}
+
+function onMaxTokens(e) {
+  store.setMaxTokens(e.target.value)
+}
+
+// 供弹窗保存后调用
+function verify() { clearTimeout(verifyTimer); checkAuth() }
+defineExpose({ verify })
+
+// 页面加载时验证
+onMounted(() => { checkAuth() })
 
 const grouped = computed(() => {
   const today = new Date(); today.setHours(0,0,0,0)
@@ -157,4 +224,34 @@ const grouped = computed(() => {
   font-size: 11px;
   color: #666;
 }
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+.settings-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.settings-input {
+  padding: 6px 8px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  outline: none;
+  width: 100%;
+}
+.settings-input:focus { border-color: #4a90d9; }
+
+.auth-status {
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.auth-status.ok { color: #2a9d4a; }
+.auth-status.fail { color: #e55; }
 </style>

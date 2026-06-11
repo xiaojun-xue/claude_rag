@@ -143,6 +143,7 @@ async def handle_answer(request: Request):
 
     use_rerank = body.get("rerank", USE_RERANKING)
     history = body.get("history") or []
+    max_tokens = body.get("max_tokens")  # 客户端可选；服务端会封顶到 LLM_MAX_TOKENS
 
     async def event_stream():
         reranker = Reranker() if use_rerank else None
@@ -158,7 +159,7 @@ async def handle_answer(request: Request):
             return
 
         synthesizer = LLMSynthesizer()
-        async for chunk in synthesizer.stream(query, docs, history=history):
+        async for chunk in synthesizer.stream(query, docs, history=history, max_tokens=max_tokens):
             yield chunk
 
     return StreamingResponse(

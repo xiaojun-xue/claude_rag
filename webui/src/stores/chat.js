@@ -6,6 +6,41 @@ export const useChatStore = defineStore('chat', () => {
   const currentId = ref(sessions.value[0]?.id || null)
   const loading = ref(false)
 
+  // ── Auth state ────────────────────────────────────────────────────────
+  const apiKey = ref(localStorage.getItem('rag_api_key') || '')
+  const authRequired = ref(false)
+
+  function authHeaders() {
+    return apiKey.value ? { 'x-api-key': apiKey.value } : {}
+  }
+
+  async function fetchWithAuth(url, options = {}) {
+    const headers = { ...(options.headers || {}), ...authHeaders() }
+    const resp = await fetch(url, { ...options, headers })
+    if (resp.status === 401) authRequired.value = true
+    return resp
+  }
+
+  function setApiKey(key) {
+    apiKey.value = (key || '').trim()
+    try { localStorage.setItem('rag_api_key', apiKey.value) } catch (_) {}
+    if (apiKey.value) authRequired.value = false
+  }
+
+  function clearApiKey() {
+    apiKey.value = ''
+    try { localStorage.removeItem('rag_api_key') } catch (_) {}
+  }
+
+  // ── Token control ─────────────────────────────────────────────────────
+  const maxTokens = ref(Number(localStorage.getItem('rag_max_tokens')) || 0)
+
+  function setMaxTokens(val) {
+    const n = Number(val)
+    maxTokens.value = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+    try { localStorage.setItem('rag_max_tokens', String(maxTokens.value)) } catch (_) {}
+  }
+
   const current = computed(() => sessions.value.find(s => s.id === currentId.value))
 
   function newSession() {
@@ -39,7 +74,7 @@ export const useChatStore = defineStore('chat', () => {
       const body = mode === 'exact'
         ? { query, top_k: 10 }
         : { query, mode: 'all', top_k: 5 }
-      const r = await fetch(endpoint, {
+      const r = await fetchWithAuth(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -80,14 +115,19 @@ export const useChatStore = defineStore('chat', () => {
     persist()
 
     try {
-      const resp = await fetch('/api/answer', {
+      const reqBody = { query, history }
+      if (maxTokens.value > 0) reqBody.max_tokens = maxTokens.value
+
+      const resp = await fetchWithAuth('/api/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, history }),
+        body: JSON.stringify(reqBody),
       })
 
       if (!resp.ok) {
         msg.content = `请求失败：HTTP ${resp.status}`
+        msg.isStreaming = false
+        loading.value = false
         return
       }
 
@@ -144,7 +184,14 @@ export const useChatStore = defineStore('chat', () => {
 
   if (sessions.value.length === 0) newSession()
 
-  return { sessions, currentId, current, loading, newSession, switchSession, addMessage, search, answer, deleteSession }
+  return {
+    sessions, currentId, current, loading,
+    newSession, switchSession, addMessage, search, answer, deleteSession,
+    // auth
+    apiKey, authRequired, authHeaders, fetchWithAuth, setApiKey, clearApiKey,
+    // token control
+    maxTokens, setMaxTokens,
+  }
 })
 
 function loadSessions() {

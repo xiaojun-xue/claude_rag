@@ -4,11 +4,18 @@ vector_store/
 vector_store_backup/
 models_cache/
 
+# ── Local model files (large binaries, machine-specific) ───────────────────
+models/
+Modelfile
+
 # ── Local machine config (paths and IPs are machine-specific) ─────────────
 .claude/
 .mcp.json
 .mcp.remote.json
 claude_rag.toml
+
+# ── Temp: not fully tested, contains absolute paths ───────────────────────
+start_server.bat
 
 # ── Python ─────────────────────────────────────────────────────────────────
 __pycache__/
@@ -35,11 +42,13 @@ htmlcov/
 
 # ── Logs & temp ────────────────────────────────────────────────────────────
 *.log
+*.bak
 /tmp/
 
 # ── OS ─────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # ── IDE ────────────────────────────────────────────────────────────────────
 .vscode/
@@ -49,4 +58,5 @@ Thumbs.db
 
 # ── Web UI build artifacts ──────────────────────────────────────────────────
 webui/node_modules/
-src/server/static/
+# src/server/static/ is committed so the WebUI works out-of-the-box after clone.
+# Rebuild with:  cd webui && npm install && npm run build

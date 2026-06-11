@@ -86,11 +86,27 @@ cd <repo>
 # 2. Install CPU-only PyTorch first (avoids downloading 2 GB CUDA build)
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# 3. Install remaining dependencies
+# 3. Install remaining Python dependencies
 pip install -r requirements.txt
 
-# 4. Optional: BM25 hybrid search and better PDF parsing
+# 4. Build the Web UI (requires Node.js ≥ 18)
+cd webui
+npm install
+npm run build
+cd ..
+
+# 5. Optional: BM25 hybrid search and better PDF parsing
 pip install rank-bm25 pdfplumber
+```
+
+### Web UI (re)build
+
+The Web UI is pre-built and committed in `src/server/static/`. If you modify the frontend source under `webui/`, rebuild with:
+
+```bash
+cd webui
+npm install        # skip if already done
+npm run build      # outputs to ../src/server/static/
 ```
 
 ---

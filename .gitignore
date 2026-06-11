@@ -58,4 +58,5 @@ desktop.ini
 
 # ── Web UI build artifacts ──────────────────────────────────────────────────
 webui/node_modules/
-src/server/static/
+# src/server/static/ is committed so the WebUI works out-of-the-box after clone.
+# Rebuild with:  cd webui && npm install && npm run build
